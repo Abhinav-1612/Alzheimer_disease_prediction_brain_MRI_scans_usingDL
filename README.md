@@ -1,43 +1,80 @@
-# Alzheimer Disease Prediction Brain MRI Scans Using DL
+# NeuroAI: Alzheimer's Disease Diagnostic Platform
 
-This project contains a Streamlit app for MRI-based Alzheimer stage prediction.
+Attention-Gated Hybrid Deep Learning (CNN + Swin Transformer) for Brain MRI staging.
+
+NeuroAI is a clinically oriented diagnostic web application for multiclass staging of Alzheimer's disease using T1-weighted MRI scans. By moving beyond standalone CNNs, this system employs an Attention-Gated Hybrid Architecture that dynamically fuses local micro-textures extracted via EfficientNet-B0 with global macro-geometry mapped by a Swin-Tiny Transformer.
+
+The model achieves 99.84% test accuracy on a strictly isolated, leak-free test vault, after resolving severe dataset imbalance using a Conditional Wasserstein GAN (W-GAN).
+
+To bridge the gap between AI performance and medical trust, this Streamlit platform features real-time diagnostic staging, automated clinical precautions, and Dual-Spectrum Explainable AI (GradCAM) heatmaps to visually validate the model's reasoning.
+
+## Core Features
+
+- **4-Class Prediction:** Staging for Non-Demented, Very Mild, Mild, and Moderate Demented.
+- **Hybrid Parallel Architecture:** EfficientNet-B0 for local texture extraction plus Swin-Tiny Transformer for global morphology.
+- **Dynamic Fusion:** Custom Cross-Attention Squeeze-and-Excitation gate helps prevent feature imbalance.
+- **Explainable AI:** Integrated GradCAM generates clinical heatmaps highlighting disease-relevant regions such as ventricular enlargement and hippocampal atrophy.
+- **Dataset:** Kaggle Augmented Alzheimer MRI Dataset, mathematically balanced to 10,240 images using W-GAN.
 
 Dataset: <https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset>
 
-## Files required for deployment
+## Files Required for Deployment
 
-- `app.py` - Streamlit entrypoint
-- `best_attention_hybrid_model.pth` - trained PyTorch model weights
-- `requirements.txt` - Python dependencies for Streamlit Cloud
-- `.gitattributes` - tracks `.pth` model files with Git LFS
+- `app.py` - The main Streamlit entry point and UI dashboard.
+- `best_attention_hybrid_model.pth` - The serialized PyTorch model weights.
+- `requirements.txt` - Python dependencies for Streamlit Community Cloud.
+- `.gitattributes` - Configures Git LFS to track the `.pth` model file.
 
-## Run locally
+## Run Locally
+
+To run this application on your local machine, ensure you have Python 3.10+ installed.
+
+Clone this repository:
+
+```bash
+git clone https://github.com/Abhinav-1612/Alzheimer_disease_prediction_brain_MRI_scans_usingDL.git
+cd Alzheimer_disease_prediction_brain_MRI_scans_usingDL
+```
+
+Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Launch the Streamlit server:
+
+```bash
 streamlit run app.py
 ```
 
 ## Deploy on Streamlit Community Cloud
 
-1. Push this repository to GitHub.
+1. Push this repository to GitHub and ensure Git LFS is configured for the `.pth` file.
 2. Go to <https://share.streamlit.io>.
 3. Click **Create app**.
-4. Select this GitHub repo, branch, and set the main file path to `app.py`.
-5. In **Advanced settings**, choose Python `3.12`.
-6. Deploy the app and watch the logs for dependency or model-loading errors.
+4. Select this GitHub repo, select your branch, and set the main file path to `app.py`.
+5. In **Advanced settings**, choose Python `3.10` or `3.12`.
+6. Click **Deploy** and watch the logs for dependency or model-loading initialization messages.
 
-## Git LFS note
+## Git LFS Note
 
-The model file is larger than GitHub's normal 100 MB file limit, so `.pth` files must be tracked with Git LFS:
+The hybrid `.pth` model file is larger than GitHub's standard 100 MB file limit. You must use Git LFS to track and push this file:
 
 ```bash
+# Install Git LFS
 git lfs install
+
+# Track PyTorch model files
 git lfs track "*.pth"
+
+# Add the Git LFS configuration file
+git add .gitattributes
 ```
 
-## Notes
+## Important Notes
 
-- Use `opencv-python-headless` on cloud deployments instead of `opencv-python`.
-- The app expects `best_attention_hybrid_model.pth` to be in the same folder as `app.py`.
-- This app is for research assistance only and should not replace medical diagnosis.
+- **Headless OpenCV:** `requirements.txt` uses `opencv-python-headless` instead of `opencv-python`. Standard OpenCV can require system-level GUI libraries that are often unavailable in cloud server environments.
+- **Model Path:** The backend expects `best_attention_hybrid_model.pth` to be located in the same root directory as `app.py`.
+- **Stateless Inference:** Uploaded patient MRIs exist only temporarily in server memory and are discarded after inference.
+- **Medical Disclaimer:** This application is a theoretical research tool designed to demonstrate advanced machine learning architectures. It is for educational and research assistance only and should never replace formal medical diagnosis or consultation with a certified neurologist.
