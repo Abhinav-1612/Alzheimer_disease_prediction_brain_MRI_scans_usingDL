@@ -48,15 +48,6 @@ Launch the Streamlit server:
 streamlit run app.py
 ```
 
-## Deploy on Streamlit Community Cloud
-
-1. Push this repository to GitHub and ensure Git LFS is configured for the `.pth` file.
-2. Go to <https://share.streamlit.io>.
-3. Click **Create app**.
-4. Select this GitHub repo, select your branch, and set the main file path to `app.py`.
-5. In **Advanced settings**, choose Python `3.10` or `3.12`.
-6. Click **Deploy** and watch the logs for dependency or model-loading initialization messages.
-
 ## Git LFS Note
 
 The hybrid `.pth` model file is larger than GitHub's standard 100 MB file limit. You must use Git LFS to track and push this file:
