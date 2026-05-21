@@ -1,6 +1,8 @@
-# Alzheimer Prediction Streamlit App
+# Alzheimer Disease Prediction Brain MRI Scans Using DL
 
 This project contains a Streamlit app for MRI-based Alzheimer stage prediction.
+
+Dataset: <https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset>
 
 ## Files required for deployment
 
@@ -18,22 +20,21 @@ streamlit run app.py
 
 ## Deploy on Streamlit Community Cloud
 
-1. Create a GitHub repository for this project.
-2. Install Git LFS, because `best_attention_hybrid_model.pth` is larger than GitHub's normal 100 MB file limit.
+1. Push this repository to GitHub.
+2. Go to <https://share.streamlit.io>.
+3. Click **Create app**.
+4. Select this GitHub repo, branch, and set the main file path to `app.py`.
+5. In **Advanced settings**, choose Python `3.12`.
+6. Deploy the app and watch the logs for dependency or model-loading errors.
+
+## Git LFS note
+
+The model file is larger than GitHub's normal 100 MB file limit, so `.pth` files must be tracked with Git LFS:
 
 ```bash
 git lfs install
 git lfs track "*.pth"
-git add .gitattributes app.py requirements.txt README.md best_attention_hybrid_model.pth
-git commit -m "Prepare Streamlit deployment"
-git push
 ```
-
-3. Go to <https://share.streamlit.io>.
-4. Click **Create app**.
-5. Select your GitHub repo, branch, and set the main file path to `app.py`.
-6. In **Advanced settings**, choose Python `3.12`.
-7. Deploy the app and watch the logs for dependency or model-loading errors.
 
 ## Notes
 
