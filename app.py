@@ -12,7 +12,6 @@ from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
 
-# 1. PAGE CONFIGURATION
 st.set_page_config(
     page_title="NeuroAI Diagnostic",
     page_icon="🧠",
@@ -279,7 +278,6 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
 """, unsafe_allow_html=True)
 
 
-# 3. MODEL ARCHITECTURE
 
 class AttentionHybridModel(nn.Module):
     def __init__(self, num_classes=4, dropout_rate=0.6):
@@ -328,9 +326,6 @@ class AttentionHybridModel(nn.Module):
         return self.classifier(gated_features)
 
 
-# ─────────────────────────────────────────────
-# 4. CACHED MODEL LOADING
-# ─────────────────────────────────────────────
 @st.cache_resource
 def load_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -364,7 +359,7 @@ def is_valid_brain_mri(img: Image.Image):
     img_rgb = np.array(img.convert('RGB')).astype(np.float32)
     r, g, b = img_rgb[:, :, 0], img_rgb[:, :, 1], img_rgb[:, :, 2]
 
-    # ── Check 1: Channel similarity (grayscale test) ──────────────────
+    #  Check 1: Channel similarity (grayscale test)
     # In a greyscale MRI, R ≈ G ≈ B for every pixel.
     # Raised threshold to 30 to tolerate JPEG colour artifacts and
     # slight colour casts in real-world MRI exports.
@@ -377,7 +372,7 @@ def is_valid_brain_mri(img: Image.Image):
             "MRI scans are greyscale (R ≈ G ≈ B channels)."
         )
 
-    # ── Check 2: Dark background ratio ───────────────────────────────
+    #  Check 2: Dark background ratio 
     # Brain MRI slices have a dark background around the brain.
     # Threshold raised to intensity < 55 so navy/dark-grey backgrounds
     # (common in saved MRI screenshots) are counted as "dark".
@@ -390,7 +385,7 @@ def is_valid_brain_mri(img: Image.Image):
             "Please upload a T1-weighted axial MRI slice with a dark border."
         )
 
-    # ── Check 3: Aspect ratio ─────────────────────────────────────────
+    #  Check 3: Aspect ratio 
     # MRI slices are nearly square; very elongated images are likely
     # panoramas, screenshots, or other non-medical images.
     w, h = img.size
@@ -404,9 +399,7 @@ def is_valid_brain_mri(img: Image.Image):
     return True, ""
 
 
-# ─────────────────────────────────────────────
-# 6. CLINICAL DATA
-# ─────────────────────────────────────────────
+
 classes = ['MildDemented', 'ModerateDemented', 'NonDemented', 'VeryMildDemented']
 
 clinical_advice = {
@@ -471,9 +464,6 @@ val_transforms = transforms.Compose([
 ])
 
 
-# ─────────────────────────────────────────────
-# 6. SIDEBAR
-# ─────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div style="text-align:center; padding: 1rem 0;">
@@ -522,14 +512,12 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 
-# 7. HERO HEADER
 st.markdown('<h1 class="hero-title">🧠 NeuroAI Diagnostic Platform</h1>', unsafe_allow_html=True)
 st.markdown(
     '<p class="hero-sub">Upload a T1-weighted MRI scan — our Hybrid Swin-EfficientNet model delivers clinical-grade Alzheimer\'s staging with Explainable AI heatmaps.</p>',
     unsafe_allow_html=True
 )
 
-# Metrics row
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Model", "Hybrid CNN+Swin")
 m2.metric("Classes", "4 Stages")
@@ -539,16 +527,12 @@ m4.metric("Input", "256 × 256 px")
 st.markdown('<hr class="neon-divider">', unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────
-# 8. MAIN LAYOUT
-# ─────────────────────────────────────────────
+
 col_upload, col_results = st.columns([1, 2], gap="large")
 
-# ── LEFT: Upload panel ──────────────────────
 with col_upload:
     st.markdown('<div class="section-label">📤 Input Scan</div>', unsafe_allow_html=True)
 
-    # Use a styled container instead of split open/close div tags
     with st.container():
         st.markdown("""
         <style>
@@ -568,16 +552,14 @@ with col_upload:
         )
 
         analyze_button = False
-        mri_valid      = False   # gate that controls the results panel
+        mri_valid      = False   
 
         if uploaded_file is not None:
             img = Image.open(uploaded_file).convert('RGB')
 
-            # ── Validate before showing anything ──
             mri_valid, reason = is_valid_brain_mri(img)
 
             if not mri_valid:
-                # Show the uploaded image (small) so user can see what they picked
                 st.image(img, caption="Uploaded image", use_container_width=True)
                 st.markdown(f"""
                 <div style="
@@ -625,7 +607,6 @@ with col_upload:
             </div>
             """, unsafe_allow_html=True)
 
-    # Info box
     st.markdown("""
     <div class="glass-card" style="font-size:0.82rem; line-height:1.8; color:#64748b;">
         <div style="color:#00d4ff; font-weight:700; margin-bottom:0.5rem;">ℹ️ How It Works</div>
@@ -637,7 +618,6 @@ with col_upload:
     """, unsafe_allow_html=True)
 
 
-# ── RIGHT: Results panel ─────────────────────
 with col_results:
     if uploaded_file is not None and not mri_valid:
         # Invalid image was uploaded — show guidance panel
@@ -671,7 +651,6 @@ with col_results:
         """, unsafe_allow_html=True)
 
     elif uploaded_file is None:
-        # Placeholder state
         st.markdown("""
         <div style="
             height: 400px;
@@ -711,7 +690,6 @@ with col_results:
         """, unsafe_allow_html=True)
 
     else:
-        # ── INFERENCE ───────────────────────
         with st.spinner("🔄 Neural networks processing MRI scan..."):
             img_tensor = val_transforms(img).unsqueeze(0).to(device)
             with torch.no_grad():
@@ -721,7 +699,6 @@ with col_results:
                 pred_class = classes[pred_idx]
                 confidence = float(probs[pred_idx]) * 100
 
-        # ── RESULTS HEADER ───────────────────
         st.markdown('<div class="section-label">📋 Diagnostic Report</div>', unsafe_allow_html=True)
 
         advice = clinical_advice[pred_class]
