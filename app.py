@@ -2,16 +2,18 @@ import os
 import sys
 import subprocess
 
-# --- STREAMLIT CLOUD FIX ---
-# grad-cam on PyPI declares opencv-python as a dependency.
-# We install it with --no-deps to avoid pulling in opencv-python (GUI version).
-# cv2 is NOT imported at all — we use a custom pure-numpy heatmap overlay instead.
+# grad-cam is NOT in requirements.txt because it lists opencv-python as a dep.
+# Installing opencv-python on Streamlit Cloud crashes with:
+#   ImportError: libgthread-2.0.so.0: cannot open shared object file
+# We install it here with --no-deps so pip never touches opencv.
+# All other grad-cam deps (scikit-learn, tqdm, ttach, torch, numpy, matplotlib)
+# are already satisfied by requirements.txt.
 try:
-    from pytorch_grad_cam import GradCAM
+    from pytorch_grad_cam import GradCAM  # noqa: F401 — already installed
 except (ImportError, ModuleNotFoundError):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", "grad-cam"])
-    from pytorch_grad_cam import GradCAM
-# --------------------------
+    subprocess.check_call([
+        sys.executable, "-m", "pip", "install", "--no-deps", "--quiet", "grad-cam"
+    ])
 
 import streamlit as st
 import torch
@@ -22,6 +24,7 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 from pytorch_grad_cam import GradCAM
+
 
 
 def apply_heatmap(rgb_img: np.ndarray, grayscale_cam: np.ndarray, colormap: str = "jet") -> np.ndarray:
