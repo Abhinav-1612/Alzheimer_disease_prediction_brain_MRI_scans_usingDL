@@ -5,7 +5,6 @@ torch==2.6.0+cpu
 torchvision==0.21.0+cpu
 Pillow
 numpy
-opencv-python-headless
 matplotlib
 scikit-learn
 tqdm

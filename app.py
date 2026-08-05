@@ -3,18 +3,16 @@ import sys
 import subprocess
 
 # --- STREAMLIT CLOUD FIX ---
-# grad-cam on PyPI declares opencv-python as a dependency. Installing it
-# alongside opencv-python-headless causes a cv2 recursion crash.
-# We install grad-cam with --no-deps so it NEVER pulls opencv-python.
-# All other grad-cam deps (numpy, matplotlib, scikit-learn, tqdm, ttach, torch)
-# are listed directly in requirements.txt.
+# grad-cam on PyPI declares opencv-python as a dependency.
+# We install it with --no-deps to avoid pulling in opencv-python (GUI version).
+# cv2 is NOT imported at all — we use a custom pure-numpy heatmap overlay instead.
 try:
-    from pytorch_grad_cam import GradCAM  # already installed, skip
+    from pytorch_grad_cam import GradCAM
 except (ImportError, ModuleNotFoundError):
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", "grad-cam"])
+    from pytorch_grad_cam import GradCAM
 # --------------------------
 
-import cv2
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -22,10 +20,21 @@ import torch.nn.functional as F
 from torchvision import models, transforms
 from PIL import Image
 import numpy as np
-
 import matplotlib.pyplot as plt
 from pytorch_grad_cam import GradCAM
-from pytorch_grad_cam.utils.image import show_cam_on_image
+
+
+def apply_heatmap(rgb_img: np.ndarray, grayscale_cam: np.ndarray, colormap: str = "jet") -> np.ndarray:
+    """Pure numpy/matplotlib heatmap overlay — no cv2 required.
+    rgb_img: float32 H×W×3 in [0,1]
+    grayscale_cam: float32 H×W in [0,1]
+    Returns uint8 H×W×3 RGB overlay.
+    """
+    cmap = plt.get_cmap(colormap)
+    heatmap = cmap(grayscale_cam)[:, :, :3].astype(np.float32)  # H×W×3, [0,1]
+    overlay = 0.5 * heatmap + 0.5 * rgb_img.astype(np.float32)
+    overlay = np.clip(overlay, 0, 1)
+    return (overlay * 255).astype(np.uint8)
 
 st.set_page_config(
     page_title="NeuroAI Diagnostic",
@@ -815,8 +824,8 @@ with col_results:
             gray_cnn  = cam_cnn(input_tensor=img_tensor)[0, :]
             gray_swin = cam_swin(input_tensor=img_tensor)[0, :]
 
-            heat_cnn  = show_cam_on_image(rgb_img, gray_cnn,  use_rgb=True, colormap=cv2.COLORMAP_JET)
-            heat_swin = show_cam_on_image(rgb_img, gray_swin, use_rgb=True, colormap=cv2.COLORMAP_HOT)
+            heat_cnn  = apply_heatmap(rgb_img, gray_cnn,  colormap="jet")
+            heat_swin = apply_heatmap(rgb_img, gray_swin, colormap="hot")
 
             fig, axes = plt.subplots(1, 2, figsize=(11, 5))
             fig.patch.set_facecolor('#020818')
