@@ -647,7 +647,7 @@ with col_upload:
 
             if not mri_valid:
                 # Show the uploaded image (small) so user can see what they picked
-                st.image(img, caption="Uploaded image", width="stretch")
+                st.image(img, caption="Uploaded image", use_container_width=True)
                 st.markdown(f"""
                 <div style="
                     background: linear-gradient(135deg,rgba(239,68,68,0.10) 0%,rgba(245,158,11,0.06) 100%);
@@ -678,7 +678,7 @@ with col_upload:
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.image(img, caption="📷 Patient MRI Scan", width="stretch")
+                st.image(img, caption="📷 Patient MRI Scan", use_container_width=True)
                 st.markdown("<br>", unsafe_allow_html=True)
                 analyze_button = st.button("⚡ RUN CLINICAL ANALYSIS")
 
