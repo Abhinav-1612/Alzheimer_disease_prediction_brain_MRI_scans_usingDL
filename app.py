@@ -1,19 +1,25 @@
 import os
 import sys
 import subprocess
+import tempfile
 
 # --- STREAMLIT CLOUD OPENCV FIX ---
 # grad-cam forces the installation of opencv-python (which requires GUI libs).
-# This block uninstalls the GUI version if it crashes and forces the headless version.
+# Since Streamlit Cloud's site-packages are read-only at runtime, we install 
+# the headless version into a temporary directory and prioritize it in sys.path.
 try:
     import cv2
 except ImportError:
-    subprocess.call([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python", "opencv-python-headless"])
-    subprocess.call([sys.executable, "-m", "pip", "install", "opencv-python-headless"])
+    cv2_tmp = os.path.join(tempfile.gettempdir(), "cv2_headless")
+    if not os.path.exists(cv2_tmp) or not os.path.exists(os.path.join(cv2_tmp, "cv2")):
+        os.makedirs(cv2_tmp, exist_ok=True)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "opencv-python-headless", "--no-deps", "-t", cv2_tmp])
+    sys.path.insert(0, cv2_tmp)
     if "cv2" in sys.modules:
         del sys.modules["cv2"]
     import cv2
 # ----------------------------------
+
 
 import streamlit as st
 import torch
