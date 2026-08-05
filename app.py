@@ -1,4 +1,20 @@
 import os
+import sys
+import subprocess
+
+# --- STREAMLIT CLOUD OPENCV FIX ---
+# grad-cam forces the installation of opencv-python (which requires GUI libs).
+# This block uninstalls the GUI version if it crashes and forces the headless version.
+try:
+    import cv2
+except ImportError:
+    subprocess.call([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python", "opencv-python-headless"])
+    subprocess.call([sys.executable, "-m", "pip", "install", "opencv-python-headless"])
+    if "cv2" in sys.modules:
+        del sys.modules["cv2"]
+    import cv2
+# ----------------------------------
+
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -6,7 +22,7 @@ import torch.nn.functional as F
 from torchvision import models, transforms
 from PIL import Image
 import numpy as np
-import cv2
+
 import matplotlib.pyplot as plt
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
