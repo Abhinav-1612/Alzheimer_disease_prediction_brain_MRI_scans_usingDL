@@ -7,4 +7,6 @@ Pillow
 numpy
 opencv-python-headless
 matplotlib
-grad-cam
+scikit-learn
+tqdm
+ttach

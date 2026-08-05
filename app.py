@@ -1,26 +1,20 @@
 import os
 import sys
 import subprocess
-import tempfile
 
-# --- STREAMLIT CLOUD OPENCV FIX ---
-# grad-cam forces the installation of opencv-python (which requires GUI libs).
-# Since Streamlit Cloud's site-packages are read-only at runtime, we install 
-# the headless version into a temporary directory and prioritize it in sys.path.
+# --- STREAMLIT CLOUD FIX ---
+# grad-cam on PyPI declares opencv-python as a dependency. Installing it
+# alongside opencv-python-headless causes a cv2 recursion crash.
+# We install grad-cam with --no-deps so it NEVER pulls opencv-python.
+# All other grad-cam deps (numpy, matplotlib, scikit-learn, tqdm, ttach, torch)
+# are listed directly in requirements.txt.
 try:
-    import cv2
-except ImportError:
-    cv2_tmp = os.path.join(tempfile.gettempdir(), "cv2_headless")
-    if not os.path.exists(cv2_tmp) or not os.path.exists(os.path.join(cv2_tmp, "cv2")):
-        os.makedirs(cv2_tmp, exist_ok=True)
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "opencv-python-headless", "--no-deps", "-t", cv2_tmp])
-    sys.path.insert(0, cv2_tmp)
-    if "cv2" in sys.modules:
-        del sys.modules["cv2"]
-    import cv2
-# ----------------------------------
+    from pytorch_grad_cam import GradCAM  # already installed, skip
+except (ImportError, ModuleNotFoundError):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", "grad-cam"])
+# --------------------------
 
-
+import cv2
 import streamlit as st
 import torch
 import torch.nn as nn
