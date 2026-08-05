@@ -1,19 +1,4 @@
 import os
-import sys
-import subprocess
-
-# grad-cam is NOT in requirements.txt because it lists opencv-python as a dep.
-# Installing opencv-python on Streamlit Cloud crashes with:
-#   ImportError: libgthread-2.0.so.0: cannot open shared object file
-# We install it here with --no-deps so pip never touches opencv.
-# All other grad-cam deps (scikit-learn, tqdm, ttach, torch, numpy, matplotlib)
-# are already satisfied by requirements.txt.
-try:
-    from pytorch_grad_cam import GradCAM  # noqa: F401 — already installed
-except (ImportError, ModuleNotFoundError):
-    subprocess.check_call([
-        sys.executable, "-m", "pip", "install", "--no-deps", "--quiet", "grad-cam"
-    ])
 
 import streamlit as st
 import torch
@@ -23,20 +8,85 @@ from torchvision import models, transforms
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
-from pytorch_grad_cam import GradCAM
 
 
+# ---------------------------------------------------------------------------
+# Pure-PyTorch GradCAM — zero cv2 / opencv dependency
+# ---------------------------------------------------------------------------
+class GradCAM:
+    """Minimal GradCAM that works with both CNN (B,C,H,W) and Swin (B,H,W,C)
+    target layers by detecting the output tensor layout automatically."""
 
-def apply_heatmap(rgb_img: np.ndarray, grayscale_cam: np.ndarray, colormap: str = "jet") -> np.ndarray:
-    """Pure numpy/matplotlib heatmap overlay — no cv2 required.
-    rgb_img: float32 H×W×3 in [0,1]
-    grayscale_cam: float32 H×W in [0,1]
-    Returns uint8 H×W×3 RGB overlay.
+    def __init__(self, model: nn.Module, target_layer: nn.Module):
+        self.model = model
+        self._activations: list = []
+        self._gradients: list  = []
+        self._fwd = target_layer.register_forward_hook(self._save_activation)
+        self._bwd = target_layer.register_full_backward_hook(self._save_gradient)
+
+    def _save_activation(self, _module, _inp, output):
+        self._activations.append(output.detach())
+
+    def _save_gradient(self, _module, _grad_in, grad_out):
+        self._gradients.append(grad_out[0].detach())
+
+    def remove_hooks(self):
+        self._fwd.remove()
+        self._bwd.remove()
+
+    @staticmethod
+    def _to_CHW(t: torch.Tensor) -> torch.Tensor:
+        """Convert (H,W,C) → (C,H,W) if needed; keep (C,H,W) unchanged."""
+        if t.dim() == 3 and t.shape[-1] < t.shape[0]:   # H,W,C heuristic
+            t = t.permute(2, 0, 1)
+        return t
+
+    def __call__(self, input_tensor: torch.Tensor, class_idx: int = None) -> np.ndarray:
+        self._activations.clear()
+        self._gradients.clear()
+
+        self.model.eval()
+        output = self.model(input_tensor)
+
+        if class_idx is None:
+            class_idx = int(output.argmax(dim=1).item())
+
+        self.model.zero_grad()
+        one_hot = torch.zeros_like(output)
+        one_hot[0, class_idx] = 1.0
+        output.backward(gradient=one_hot, retain_graph=False)
+
+        acts  = self._to_CHW(self._activations[0][0])   # C x H x W
+        grads = self._to_CHW(self._gradients[0][0])     # C x H x W
+
+        weights = grads.mean(dim=(1, 2))                 # C
+        cam = (weights[:, None, None] * acts).sum(dim=0) # H x W
+        cam = torch.relu(cam).cpu().numpy()
+
+        # Normalize to [0, 1]
+        cam_min, cam_max = cam.min(), cam.max()
+        if cam_max > cam_min:
+            cam = (cam - cam_min) / (cam_max - cam_min)
+        else:
+            cam = np.zeros_like(cam)
+
+        # Resize to 256×256 using PIL (no cv2)
+        cam_pil = Image.fromarray((cam * 255).astype(np.uint8)).resize(
+            (256, 256), Image.BILINEAR
+        )
+        return np.array(cam_pil).astype(np.float32) / 255.0
+
+
+def apply_heatmap(rgb_img: np.ndarray, grayscale_cam: np.ndarray,
+                  colormap: str = "jet") -> np.ndarray:
+    """Pure numpy+matplotlib heatmap overlay — no cv2 required.
+    rgb_img       : float32 H×W×3 in [0, 1]
+    grayscale_cam : float32 H×W  in [0, 1]
+    Returns       : uint8  H×W×3 RGB overlay
     """
-    cmap = plt.get_cmap(colormap)
-    heatmap = cmap(grayscale_cam)[:, :, :3].astype(np.float32)  # H×W×3, [0,1]
-    overlay = 0.5 * heatmap + 0.5 * rgb_img.astype(np.float32)
-    overlay = np.clip(overlay, 0, 1)
+    cmap    = plt.get_cmap(colormap)
+    heatmap = cmap(grayscale_cam)[:, :, :3].astype(np.float32)
+    overlay = np.clip(0.5 * heatmap + 0.5 * rgb_img.astype(np.float32), 0, 1)
     return (overlay * 255).astype(np.uint8)
 
 st.set_page_config(
@@ -822,10 +872,13 @@ with col_results:
         with st.spinner("🎨 Generating GradCAM explanations..."):
             rgb_img = np.array(img.resize((256, 256))) / 255.0
 
-            cam_cnn   = GradCAM(model=model, target_layers=[model.cnn_backbone[-1]])
-            cam_swin  = GradCAM(model=model, target_layers=[model.swin_backbone[-1]])
-            gray_cnn  = cam_cnn(input_tensor=img_tensor)[0, :]
-            gray_swin = cam_swin(input_tensor=img_tensor)[0, :]
+            cam_cnn  = GradCAM(model=model, target_layer=model.cnn_backbone[-1])
+            gray_cnn = cam_cnn(input_tensor=img_tensor)
+            cam_cnn.remove_hooks()
+
+            cam_swin  = GradCAM(model=model, target_layer=model.swin_backbone[-1])
+            gray_swin = cam_swin(input_tensor=img_tensor)
+            cam_swin.remove_hooks()
 
             heat_cnn  = apply_heatmap(rgb_img, gray_cnn,  colormap="jet")
             heat_swin = apply_heatmap(rgb_img, gray_swin, colormap="hot")

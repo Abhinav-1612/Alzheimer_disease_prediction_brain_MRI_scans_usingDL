@@ -1,25 +1,20 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-# ── Core ─────────────────────────────────────────────────────────────────────
+# Core framework
+# starlette pinned below 1.4.0 to prevent GZipResponder.__init__ crash
 streamlit==1.41.0
-# Pin starlette below 1.4.0 to avoid GZipResponder.__init__ crash (Issue #2)
 starlette<1.4.0
 
-# ── Deep Learning (CPU-only, safe for Streamlit Cloud 1 GB RAM) ──────────────
+# Deep learning (CPU-only, fits Streamlit Cloud 1 GB RAM limit)
 torch==2.6.0+cpu
 torchvision==0.21.0+cpu
 
-# ── Image / data ─────────────────────────────────────────────────────────────
+# Image & data
 Pillow
 numpy
 matplotlib
 
-# ── GradCAM dependencies listed individually (grad-cam itself omitted) ───────
-# grad-cam is NOT listed here because it declares opencv-python as a required
-# dependency. When pip installs opencv-python on Streamlit Cloud it crashes with
-#   ImportError: libgthread-2.0.so.0: cannot open shared object file
-# Instead we list all of grad-cam's OTHER deps below, and the app installs
-# grad-cam itself at startup with --no-deps (see app.py).
-scikit-learn
-tqdm
-ttach
+# NOTE: grad-cam / pytorch-grad-cam is intentionally NOT listed here.
+# pytorch_grad_cam does `import cv2` internally, and opencv-python crashes
+# on Streamlit Cloud with: libgthread-2.0.so.0: No such file or directory
+# GradCAM is implemented from scratch in app.py using pure PyTorch + PIL.
